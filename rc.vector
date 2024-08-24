@@ -1,0 +1,68 @@
+#!/bin/sh
+
+VECTOR_PID="/var/run/vector.pid"
+VECTOR_HOME="/usr/local/emhttp/plugins/vector"
+VECTOR_ETC="/boot/config/plugins/vector"
+VECTOR_DAEMON=$VECTOR_HOME/vector
+
+
+vector_start() {
+  if [ -x $VECTOR_DAEMON ]; then
+        echo -n "Starting vector..."
+
+        nohup $VECTOR_DAEMON -C $VECTOR_ETC >/dev/null 2>&1 &
+        echo $! > $VECTOR_PID
+
+        echo
+    fi
+}
+
+vector_status() {
+  if [ -e $VECTOR_PID -a -n "$(pidof $VECTOR_DAEMON)" ]; then
+    echo "vector daemon is running with pid $(cat $VECTOR_PID)"
+  else
+    echo "vector daemon is not running."
+  fi
+}
+
+vector_stop() {
+    if [ -e $VECTOR_PID -a -n "$(pidof $VECTOR_DAEMON)" ]; then
+        kill $(cat $VECTOR_PID)
+    fi
+}
+
+vector_reload() {
+    [[ -r $VECTOR_PID ]] && kill -1 $(cat $VECTOR_PID)
+}
+
+vector_restart() {
+    vector_stop
+    vector_start
+}
+
+vector_validate() {
+  $VECTOR_DAEMON validate -C $VECTOR_ETC
+}
+
+case "$1" in
+'status')
+  vector_status
+  ;;
+'start')
+  vector_start
+  ;;
+'stop')
+  vector_stop
+  ;;
+'restart')
+  vector_restart
+  ;;
+'reload')
+  vector_reload
+  ;;
+'validate')
+  vector_validate
+  ;;
+*)
+  echo "usage $0 start|stop|status|restart|reload|validate"
+esac

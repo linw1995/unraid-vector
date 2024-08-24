@@ -1,0 +1,58 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+	<!ENTITY name "vector">
+	<!ENTITY author "linw1995">
+	<!ENTITY version "2024.08.24">
+	<!ENTITY gitURL "https://github.com/&author;/unraid-&name;/raw/main">
+	<!ENTITY pluginURL "&gitURL;/&name;.plg">
+	<!ENTITY plugin "/boot/config/plugins/&name;">
+	<!ENTITY emhttp "/usr/local/emhttp/plugins/&name;">
+	<!ENTITY md5 "052564f0b7700a9590d2213d557e06dc">
+	<!ENTITY filename "vector-0.40.0-x86_64-unknown-linux-gnu">
+]>
+
+<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="6.12.0"
+	support="https://github.com/&author;/unraid-&name;/issues">
+
+	<CHANGES>
+
+		###2024.08.24
+		- Initial release - based on version v0.40.0
+
+	</CHANGES>
+
+	<FILE Run="/bin/bash">
+		<INLINE>
+			# remove old versions
+			rm -f $(ls &plugin;/*.tgz 2>/dev/null|grep -v '&filename;')
+		</INLINE>
+	</FILE>
+
+
+	<FILE Name="&plugin;/&filename;.tgz" Run="upgradepkg --install-new">
+		<URL>&gitURL;/packages/&filename;.tgz</URL>
+		<MD5>&md5;</MD5>
+	</FILE>
+
+	<FILE Run="/bin/bash">
+		<INLINE>
+			chmod ugo+x /etc/rc.d/rc.vector
+
+			/etc/rc.d/rc.vector start
+		</INLINE>
+	</FILE>
+
+	<FILE Run="/bin/bash" Method="remove">
+		<INLINE>
+            /etc/rc.d/rc.vector stop
+	        sleep 1
+
+			# uninstall plugins
+	        removepkg &plugin;/*.tgz
+
+			# cleanup
+			rm -rf &emhttp;
+			rm -rf &plugin;/*.tgz # keep the configs
+		</INLINE>
+	</FILE>
+</PLUGIN>
