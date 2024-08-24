@@ -19,3 +19,13 @@ tar --owner=0 --group=0 -cvzf packages/vector-0.40.0-x86_64-unknown-linux-gnu.tg
 
 md5sum ./packages/vector-0.40.0-x86_64-unknown-linux-gnu.tgz
 ```
+
+## Usage
+
+Create config file `/boot/config/plugins/vector/config.yaml`.
+
+Then...
+
+- Run `/etc/rc.d/rc.vector validate` to validate.
+- Run `/etc/rc.d/rc.vector start` to start.
+- Or run `/etc/rc.d/rc.vector reload` to hot reload.
