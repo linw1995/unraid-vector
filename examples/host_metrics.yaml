@@ -1,0 +1,18 @@
+sources:
+  hostmetrics:
+    type: "host_metrics"
+    namespace: "node"
+transforms:
+  modify_hostmetrics:
+    type: remap
+    inputs:
+      - hostmetrics
+    source: .tags.job = "vector"
+sinks:
+  vm_hostmetrics:
+    type: "prometheus_remote_write"
+    inputs:
+      - "modify_hostmetrics"
+    endpoint: "https://example.com/api/v1/write"
+    healthcheck:
+      enabled: false
