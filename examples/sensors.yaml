@@ -1,0 +1,92 @@
+# sensors -j | jq -c
+sources:
+  sensors:
+    type: exec
+    command:
+      - sh
+      - -c
+      - sensors -j | jq -c
+    mode: scheduled
+    scheduled:
+      exec_interval_secs: 5
+
+transforms:
+  modify_sensors:
+    type: remap
+    inputs:
+      - sensors
+    source: |-
+      events = []
+      data = parse_json!(.message)
+      for_each(object!(data)) -> |chip_name, value| {
+        adapter_name = del(value.Adapter)
+        for_each(object!(value)) -> |sensor_name, data| {
+          data = filter(object!(data)) -> |key, _value| {
+            match(key, r'input')
+          }
+          input_keys = keys(data)
+          if length(input_keys) == 1 {
+            key = string!(input_keys[0])
+            value = get!(value: data, path: [key])
+            type = "unknown"
+            if starts_with(key, "fan") {
+              type = "fan"
+            } else if starts_with(key, "temp") {
+              type = "temperature"
+            }
+            if type != "unknown" {
+              events = push(events, {
+                "chip": chip_name,
+                "adapter": adapter_name,
+                "name": sensor_name,
+                "type": type,
+                "value": value
+              })
+            }
+          }
+        }
+      }
+      . = events
+  router_sensors:
+    type: route
+    inputs:
+      - modify_sensors
+    route:
+      temperature: .type == "temperature"
+      fan: .type == "fan"
+  sensors_temperature_metrics:
+    type: log_to_metric
+    inputs:
+      - router_sensors.temperature
+    metrics:
+      - type: gauge
+        field: value
+        name: temperature
+        tags:
+          sensor_name: "{{ .name }}"
+          adapter_name: "{{ .adapter }}"
+          chip_name: "{{ .chip }}"
+          application: sensors
+  sensors_fan_metrics:
+    type: log_to_metric
+    inputs:
+      - router_sensors.fan
+    metrics:
+      - type: gauge
+        field: value
+        name: fan
+        tags:
+          sensor_name: "{{ .name }}"
+          adapter_name: "{{ .adapter }}"
+          chip_name: "{{ .chip }}"
+          application: sensors
+
+sinks:
+  vm_sensors_metrics:
+    type: "prometheus_remote_write"
+    inputs:
+      - sensors_temperature_metrics
+      - sensors_fan_metrics
+    endpoint: "https://example.com/api/v1/write"
+    healthcheck:
+      enabled: false
